@@ -304,7 +304,10 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
             hebrew={currentWord.hebrew}
             transliteration={currentWord.transliteration}
             isPlaying={isPlayingTrop}
-            onTap={handleWordTap}
+            onTap={(e) => {
+              TropPlayer.unlock();
+              handleWordTap(e);
+            }}
             variant={variant}
           />
         )}
@@ -312,6 +315,8 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
         <div className="mt-6 text-sm text-indigo-200/70 font-semibold">
           {isPlayingTrop
             ? '🎵 Playing melody...'
+            : !currentWord?.trop
+            ? 'Tap to advance'
             : listenMode
             ? 'Tap word to hear melody'
             : 'Tap to advance'}

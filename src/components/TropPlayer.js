@@ -38,6 +38,15 @@ function getAudioContext() {
   }
 }
 
+// Call synchronously during a user-gesture event handler so Safari/iOS
+// can unlock the AudioContext before any async code runs.
+function unlock() {
+  const ctx = getAudioContext();
+  if (ctx && ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+}
+
 function stop() {
   for (const node of activeNodes) {
     try {
@@ -122,6 +131,7 @@ async function play(tropName) {
 const TropPlayer = {
   play,
   stop,
+  unlock,
 };
 
 export default TropPlayer;
