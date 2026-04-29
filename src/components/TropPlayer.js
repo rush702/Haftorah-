@@ -21,6 +21,18 @@ const TROP_MELODIES = {
   "darga":         [["d", 0.15], ["e", 0.15], ["f", 0.3]],
   "telisha":       [["a", 0.15], ["g", 0.3]],
   "munach-legarmeih": [["e", 0.2], ["d", 0.3]],
+
+  // Ashkenazic haftarah bracha (prayer/blessing) nusach
+  // Baruch: rising arc to the peak
+  "tefillah-rise": [["e", 0.1], ["g", 0.15], ["a", 0.15], ["bb", 0.3]],
+  // Ata: sustained peak with slight ornament
+  "tefillah-high": [["bb", 0.15], ["a", 0.15], ["bb", 0.3]],
+  // Adonai / Yy: falling resolution
+  "tefillah-drop": [["a", 0.1], ["g", 0.15], ["f", 0.15], ["e", 0.15], ["d", 0.3]],
+  // Middle words: gentle reciting-tone motion
+  "tefillah-mid":  [["e", 0.12], ["f", 0.12], ["e", 0.22]],
+  // Phrase/blessing end: cadential fall
+  "tefillah-end":  [["f", 0.15], ["e", 0.15], ["d", 0.45]],
 };
 
 let audioCtx = null;

@@ -2,6 +2,29 @@ import { SEC0_WORDS, SEC1_WORDS, SEC2_WORDS } from './chunk1';
 import { SEC3_WORDS, SEC4_WORDS } from './chunk2';
 import { SEC5_WORDS, SEC6_WORDS } from './chunk3';
 
+// Assign Ashkenazic bracha (tefillah) nusach trop to blessing words that
+// don't already carry a trop mark. Detects the Baruch / Ata / Adonai
+// formula and phrase endings automatically.
+function withTefillahTrop(words) {
+  return words.map((w, i, arr) => {
+    if (w.trop) return w;
+    let trop;
+    if (w.transliteration === 'Ba-RUCH') {
+      trop = 'tefillah-rise';
+    } else if (w.transliteration === 'a-TAH' || w.transliteration === 'a-TAH') {
+      trop = 'tefillah-high';
+    } else if (w.transliteration === 'Ado-NAI') {
+      trop = 'tefillah-drop';
+    } else if (i === arr.length - 1 || arr[i + 1]?.transliteration === 'Ba-RUCH') {
+      // last word OR the word right before the next "Baruch" closing formula
+      trop = 'tefillah-end';
+    } else {
+      trop = 'tefillah-mid';
+    }
+    return { ...w, trop };
+  });
+}
+
 export const SECTIONS = [
   {
     id: 0,
@@ -14,7 +37,7 @@ export const SECTIONS = [
     isBonus: false,
     parTime: 90,
     description: 'The bracha you say before reading the haftorah.',
-    words: SEC0_WORDS,
+    words: withTefillahTrop(SEC0_WORDS),
   },
   {
     id: 1,
@@ -92,7 +115,7 @@ export const SECTIONS = [
     isBonus: false,
     parTime: 480,
     description: 'The four blessings you say after reading the haftorah.',
-    words: SEC6_WORDS,
+    words: withTefillahTrop(SEC6_WORDS),
   },
 ];
 
