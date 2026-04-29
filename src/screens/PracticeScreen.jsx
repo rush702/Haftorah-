@@ -220,7 +220,7 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
       if (listenMode && currentWord?.trop && TropPlayer?.play) {
         setIsPlayingTrop(true);
         try {
-          await TropPlayer.play(currentWord.trop);
+          await TropPlayer.play(currentWord.trop, currentWord.hebrew);
         } catch (_) {}
         setIsPlayingTrop(false);
       }
