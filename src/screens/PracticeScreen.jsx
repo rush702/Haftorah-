@@ -54,23 +54,37 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
   const isHandlingRef = useRef(false);
   const cantorRef = useRef(null);
 
-  // Real cantor recording: plays continuously while the kid taps along
+  // Real cantor recording: plays continuously while the kid taps along.
+  // Sections can share one file via cantorStart/cantorEnd offsets.
   const toggleCantor = useCallback(() => {
     if (!section.cantorAudio) return;
     if (!cantorRef.current) {
       const el = new Audio(`${import.meta.env.BASE_URL}${section.cantorAudio}`);
       el.addEventListener('ended', () => setCantorPlaying(false));
+      if (section.cantorEnd) {
+        el.addEventListener('timeupdate', () => {
+          if (el.currentTime >= section.cantorEnd) {
+            el.pause();
+            setCantorPlaying(false);
+          }
+        });
+      }
       cantorRef.current = el;
     }
     const el = cantorRef.current;
     if (el.paused) {
+      const start = section.cantorStart || 0;
+      // Restart from the section beginning if outside its window
+      if (el.currentTime < start || (section.cantorEnd && el.currentTime >= section.cantorEnd)) {
+        el.currentTime = start;
+      }
       el.play().catch(() => {});
       setCantorPlaying(true);
     } else {
       el.pause();
       setCantorPlaying(false);
     }
-  }, [section.cantorAudio]);
+  }, [section.cantorAudio, section.cantorStart, section.cantorEnd]);
 
   // Stop cantor audio when leaving the screen
   useEffect(() => {

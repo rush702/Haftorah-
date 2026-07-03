@@ -53,6 +53,9 @@ export const SECTIONS = [
     parTime: 120,
     description: 'Isaiah sees God on the throne with fiery angels.',
     words: SEC1_WORDS,
+    cantorAudio: 'audio/cantor/haftarah.mp3',
+    cantorStart: 0.4,
+    cantorEnd: 63.8,
   },
   {
     id: 2,
@@ -66,6 +69,9 @@ export const SECTIONS = [
     parTime: 50,
     description: 'The angels cry HOLY HOLY HOLY — the most famous verse!',
     words: SEC2_WORDS,
+    cantorAudio: 'audio/cantor/haftarah.mp3',
+    cantorStart: 64.0,
+    cantorEnd: 86.8,
   },
   {
     id: 3,
@@ -79,6 +85,9 @@ export const SECTIONS = [
     parTime: 480,
     description: 'An angel touches Isaiah\'s lips with a burning coal.',
     words: SEC3_WORDS,
+    cantorAudio: 'audio/cantor/haftarah.mp3',
+    cantorStart: 87.2,
+    cantorEnd: 339.4,
   },
   {
     id: 4,
