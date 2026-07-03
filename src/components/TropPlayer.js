@@ -47,7 +47,7 @@ const audioElCache = {};
 
 function loadManifest() {
   if (manifestPromise) return manifestPromise;
-  manifestPromise = fetch('/audio/trop/manifest.json')
+  manifestPromise = fetch(`${import.meta.env.BASE_URL}audio/trop/manifest.json`)
     .then((r) => (r.ok ? r.json() : null))
     .then((m) => { recordingsManifest = m; return m; })
     .catch(() => { recordingsManifest = null; return null; });
@@ -61,7 +61,7 @@ function playRecording(tropName) {
     try {
       let el = audioElCache[tropName];
       if (!el) {
-        el = new Audio(`/audio/trop/${file}`);
+        el = new Audio(`${import.meta.env.BASE_URL}audio/trop/${file}`);
         el.preload = 'auto';
         audioElCache[tropName] = el;
       }

@@ -38,6 +38,8 @@ export const SECTIONS = [
     parTime: 90,
     description: 'The bracha you say before reading the haftorah.',
     words: withTefillahTrop(SEC0_WORDS),
+    // Real cantor recording (Chaim Alevsky, Chabad.org) served from public/
+    cantorAudio: 'audio/cantor/section-0.mp3',
   },
   {
     id: 1,

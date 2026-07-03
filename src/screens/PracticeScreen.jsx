@@ -48,9 +48,36 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
   const [listenMode, setListenMode] = useState(true);
   const [completing, setCompleting] = useState(false);
   const [comboBurst, setComboBurst] = useState(null);
+  const [cantorPlaying, setCantorPlaying] = useState(false);
 
   const rewardIdRef = useRef(0);
   const isHandlingRef = useRef(false);
+  const cantorRef = useRef(null);
+
+  // Real cantor recording: plays continuously while the kid taps along
+  const toggleCantor = useCallback(() => {
+    if (!section.cantorAudio) return;
+    if (!cantorRef.current) {
+      const el = new Audio(`${import.meta.env.BASE_URL}${section.cantorAudio}`);
+      el.addEventListener('ended', () => setCantorPlaying(false));
+      cantorRef.current = el;
+    }
+    const el = cantorRef.current;
+    if (el.paused) {
+      el.play().catch(() => {});
+      setCantorPlaying(true);
+    } else {
+      el.pause();
+      setCantorPlaying(false);
+    }
+  }, [section.cantorAudio]);
+
+  // Stop cantor audio when leaving the screen
+  useEffect(() => {
+    return () => {
+      try { cantorRef.current?.pause(); } catch (_) {}
+    };
+  }, []);
 
   const currentWord = section.words[wordIndex];
   const multiplier = getMultiplier(comboCount);
@@ -233,8 +260,9 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
         triggerHolyFireConfetti(tapX, tapY);
       }
 
-      // Play trop melody if listenMode
-      if (listenMode && currentWord?.trop && TropPlayer?.play) {
+      // Play trop melody if listenMode (skip while the cantor recording
+      // is playing — no clashing audio, the kid taps along instead)
+      if (listenMode && !cantorPlaying && currentWord?.trop && TropPlayer?.play) {
         setIsPlayingTrop(true);
         try {
           await TropPlayer.play(currentWord.trop, currentWord.hebrew);
@@ -262,6 +290,7 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
       handleSectionComplete,
       isPlayingTrop,
       listenMode,
+      cantorPlaying,
       recordWordRead,
       sessionPoints,
       speedBonusCount,
@@ -366,16 +395,29 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
         </button>
       </div>
 
-      {/* Real cantor recording on Chabad.org */}
+      {/* Real cantor recording: in-app if we have the audio, Chabad link otherwise */}
       <div className="absolute bottom-4 right-4 z-20">
-        <a
-          href="https://www.chabad.org/library/howto/trainer_cdo/aid/1771208/jewish/Learn-to-Read-Torah-and-Haftarah-With-Trop-Audio.htm#0=32494&1=1352&2=32834&3=33223&4=v280"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-4 py-2 rounded-full font-bold text-sm shadow-lg active:scale-95 transition-all flex items-center gap-1.5 bg-gradient-to-br from-amber-500 to-orange-600 text-white"
-        >
-          🎤 Real Cantor
-        </a>
+        {section.cantorAudio ? (
+          <button
+            onClick={toggleCantor}
+            className={`px-4 py-2 rounded-full font-bold text-sm shadow-lg active:scale-95 transition-all flex items-center gap-1.5 text-white ${
+              cantorPlaying
+                ? 'bg-gradient-to-br from-green-500 to-emerald-600 animate-pulse-glow'
+                : 'bg-gradient-to-br from-amber-500 to-orange-600'
+            }`}
+          >
+            🎤 {cantorPlaying ? 'Cantor Singing…' : 'Play Cantor'}
+          </button>
+        ) : (
+          <a
+            href="https://www.chabad.org/library/howto/trainer_cdo/aid/1771208/jewish/Learn-to-Read-Torah-and-Haftarah-With-Trop-Audio.htm#0=32494&1=1352&2=32834&3=33223&4=v280"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 rounded-full font-bold text-sm shadow-lg active:scale-95 transition-all flex items-center gap-1.5 bg-gradient-to-br from-amber-500 to-orange-600 text-white"
+          >
+            🎤 Real Cantor
+          </a>
+        )}
       </div>
 
       {/* Floating rewards */}
