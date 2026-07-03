@@ -1,33 +1,37 @@
+// Haftarah mode: D tonic with C below, minor-third color (F natural)
 const NOTES = {
-  d: 293.66, e: 329.63, f: 349.23, g: 392.00,
-  a: 440.00, bb: 466.16, c: 523.25, c5: 523.25, d5: 587.33,
+  c: 261.63, d: 293.66, e: 329.63, f: 349.23,
+  g: 392.00, a: 440.00, bb: 466.16,
 };
 
+// Ashkenazic haftarah nusach contours — slower, chant-like pacing.
+// Shapes follow the standard teaching motifs: conjunctives are short
+// rises/falls, disjunctives cadence toward the tonic (D) or dip below (C).
 const TROP_MELODIES = {
-  "sof-pasuk":     [["e", 0.3], ["d", 0.6]],
-  "etnachta":      [["a", 0.25], ["g", 0.25], ["e", 0.25], ["d", 0.5]],
-  "tipcha":        [["e", 0.25], ["d", 0.25], ["c", 0.4]],
-  "mercha":        [["d", 0.25], ["e", 0.4]],
+  "sof-pasuk":     [["f", 0.3], ["e", 0.3], ["d", 0.3], ["c", 0.25], ["d", 0.6]],
+  "etnachta":      [["e", 0.3], ["d", 0.3], ["c", 0.35], ["d", 0.55]],
+  "tipcha":        [["f", 0.3], ["e", 0.3], ["d", 0.45]],
+  "mercha":        [["c", 0.25], ["d", 0.4]],
   "munach":        [["e", 0.25], ["d", 0.4]],
-  "zakef-katan":   [["g", 0.25], ["a", 0.3], ["g", 0.4]],
-  "zakef-gadol":   [["g", 0.3], ["a", 0.35], ["g", 0.5]],
-  "segol":         [["e", 0.25], ["g", 0.25], ["e", 0.4]],
-  "shalshelet":    [["d", 0.2], ["e", 0.2], ["f", 0.2], ["e", 0.2], ["f", 0.2], ["e", 0.2], ["d", 0.5]],
-  "kadma":         [["d", 0.25], ["e", 0.4]],
-  "pashta":        [["a", 0.25], ["g", 0.4]],
-  "tevir":         [["e", 0.25], ["g", 0.25], ["e", 0.25], ["d", 0.4]],
-  "geresh":        [["e", 0.25], ["d", 0.25], ["e", 0.4]],
-  "revia":         [["g", 0.25], ["a", 0.25], ["g", 0.25], ["e", 0.4]],
-  "darga":         [["d", 0.2], ["e", 0.2], ["f", 0.4]],
-  "telisha":       [["a", 0.2], ["g", 0.4]],
-  "munach-legarmeih": [["e", 0.25], ["d", 0.4]],
+  "zakef-katan":   [["g", 0.28], ["a", 0.32], ["g", 0.28], ["f", 0.42]],
+  "zakef-gadol":   [["g", 0.32], ["a", 0.4], ["g", 0.32], ["f", 0.5]],
+  "segol":         [["a", 0.28], ["g", 0.28], ["a", 0.28], ["f", 0.45]],
+  "shalshelet":    [["d", 0.22], ["f", 0.22], ["e", 0.22], ["f", 0.22], ["e", 0.22], ["f", 0.22], ["d", 0.5]],
+  "kadma":         [["d", 0.25], ["e", 0.28], ["f", 0.4]],
+  "pashta":        [["g", 0.28], ["a", 0.3], ["g", 0.42]],
+  "tevir":         [["d", 0.28], ["f", 0.28], ["e", 0.28], ["d", 0.28], ["c", 0.45]],
+  "geresh":        [["f", 0.28], ["g", 0.3], ["f", 0.28], ["e", 0.42]],
+  "revia":         [["a", 0.28], ["g", 0.28], ["f", 0.28], ["e", 0.28], ["d", 0.45]],
+  "darga":         [["c", 0.24], ["d", 0.24], ["e", 0.24], ["f", 0.4]],
+  "telisha":       [["f", 0.26], ["g", 0.3], ["f", 0.42]],
+  "munach-legarmeih": [["e", 0.28], ["d", 0.28], ["e", 0.4]],
 
   // Ashkenazic haftarah bracha nusach
-  "tefillah-rise": [["e", 0.15], ["g", 0.2], ["a", 0.2], ["bb", 0.4]],
-  "tefillah-high": [["bb", 0.2], ["a", 0.2], ["bb", 0.4]],
-  "tefillah-drop": [["a", 0.15], ["g", 0.2], ["f", 0.2], ["e", 0.2], ["d", 0.4]],
-  "tefillah-mid":  [["e", 0.18], ["f", 0.18], ["e", 0.3]],
-  "tefillah-end":  [["f", 0.2], ["e", 0.2], ["d", 0.55]],
+  "tefillah-rise": [["d", 0.22], ["f", 0.26], ["g", 0.26], ["a", 0.5]],
+  "tefillah-high": [["a", 0.26], ["g", 0.26], ["a", 0.5]],
+  "tefillah-drop": [["g", 0.22], ["f", 0.26], ["e", 0.26], ["d", 0.5]],
+  "tefillah-mid":  [["e", 0.24], ["f", 0.24], ["e", 0.38]],
+  "tefillah-end":  [["f", 0.26], ["e", 0.26], ["d", 0.26], ["c", 0.22], ["d", 0.55]],
 };
 
 let audioCtx = null;
@@ -190,14 +194,21 @@ function singMelody(tropName) {
     const osc = ctx.createOscillator();
     osc.type = 'sawtooth';
 
-    // Vibrato: 5.5 Hz, ±4 Hz — the natural wobble of a singing voice
+    // Vibrato: 5 Hz, ±3 Hz — gentle, natural singing wobble
     const vibrato = ctx.createOscillator();
-    vibrato.frequency.value = 5.5;
+    vibrato.frequency.value = 5;
     const vibratoGain = ctx.createGain();
     vibratoGain.gain.setValueAtTime(0, t0);
-    vibratoGain.gain.linearRampToValueAtTime(4, t0 + 0.25); // vibrato fades in
+    vibratoGain.gain.linearRampToValueAtTime(3, t0 + 0.35); // vibrato fades in
     vibrato.connect(vibratoGain);
     vibratoGain.connect(osc.frequency);
+
+    // Soften the raw sawtooth before vowel shaping — removes the buzz
+    const smooth = ctx.createBiquadFilter();
+    smooth.type = 'lowpass';
+    smooth.frequency.value = 2800;
+    smooth.Q.value = 0.5;
+    osc.connect(smooth);
 
     // Schedule the melody pitches with legato glides (octave down = baritone)
     const GLIDE = 0.06;
@@ -226,7 +237,7 @@ function singMelody(tropName) {
     // Vowel shaping: parallel bandpass formants + a little direct signal
     const dry = ctx.createGain();
     dry.gain.value = 0.06;
-    osc.connect(dry);
+    smooth.connect(dry);
     dry.connect(master);
 
     for (const f of AH_FORMANTS) {
@@ -236,7 +247,7 @@ function singMelody(tropName) {
       bp.Q.value = f.q;
       const fg = ctx.createGain();
       fg.gain.value = f.gain;
-      osc.connect(bp);
+      smooth.connect(bp);
       bp.connect(fg);
       fg.connect(master);
       activeNodes.push({ osc: bp, gain: fg });

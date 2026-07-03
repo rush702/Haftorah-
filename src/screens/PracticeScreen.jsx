@@ -366,6 +366,18 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
         </button>
       </div>
 
+      {/* Real cantor recording on Chabad.org */}
+      <div className="absolute bottom-4 right-4 z-20">
+        <a
+          href="https://www.chabad.org/library/howto/trainer_cdo/aid/1771208/jewish/Learn-to-Read-Torah-and-Haftarah-With-Trop-Audio.htm#0=32494&1=1352&2=32834&3=33223&4=v280"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-2 rounded-full font-bold text-sm shadow-lg active:scale-95 transition-all flex items-center gap-1.5 bg-gradient-to-br from-amber-500 to-orange-600 text-white"
+        >
+          🎤 Real Cantor
+        </a>
+      </div>
+
       {/* Floating rewards */}
       {floatingRewards.map((r) => (
         <FloatingPoints
