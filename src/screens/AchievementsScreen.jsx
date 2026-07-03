@@ -24,7 +24,7 @@ export default function AchievementsScreen({ onBack }) {
   };
 
   return (
-    <div className="min-h-[100dvh] overflow-y-auto px-4 pt-5 pb-10 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
+    <div className="h-[100dvh] overflow-y-auto px-4 pt-5 pb-10 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-5">

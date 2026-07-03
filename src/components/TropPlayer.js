@@ -36,7 +36,6 @@ const TROP_MELODIES = {
 
 let audioCtx = null;
 let activeNodes = [];
-let voicesLoaded = false;
 
 // Real cantor recordings (downloaded via scripts/fetch-chabad-audio.mjs
 // into public/audio/trop/). manifest.json maps trop key → filename.
@@ -99,11 +98,6 @@ function unlock() {
   if (ctx && ctx.state === 'suspended') {
     ctx.resume().catch(() => {});
   }
-  // Pre-load speech voices
-  if (window.speechSynthesis && !voicesLoaded) {
-    window.speechSynthesis.getVoices();
-    voicesLoaded = true;
-  }
   // Kick off manifest load early
   loadManifest();
 }
@@ -116,56 +110,11 @@ function stop() {
     try { node.gain.disconnect(); } catch (_) {}
   }
   activeNodes = [];
-  // Stop any ongoing speech
-  try {
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
-  } catch (_) {}
   // Stop any cantor recording
   if (currentAudioEl) {
     try { currentAudioEl.pause(); } catch (_) {}
     currentAudioEl = null;
   }
-}
-
-function getBestHebrewVoice() {
-  if (!window.speechSynthesis) return null;
-  const voices = window.speechSynthesis.getVoices();
-  // Prefer genuine Hebrew voices (he-IL)
-  return (
-    voices.find(v => v.lang === 'he-IL' && !v.localService === false) ||
-    voices.find(v => v.lang === 'he-IL') ||
-    voices.find(v => v.lang.startsWith('he')) ||
-    null
-  );
-}
-
-function speakHebrew(text) {
-  if (!window.speechSynthesis || !text) return Promise.resolve(0);
-
-  return new Promise((resolve) => {
-    try {
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = 'he-IL';
-      utter.rate = 0.65;   // slow, deliberate chanting pace
-      utter.pitch = 1.05;  // slight upward pitch for a chanting feel
-      utter.volume = 1.0;
-
-      const voice = getBestHebrewVoice();
-      if (voice) utter.voice = voice;
-
-      let done = false;
-      const finish = () => { if (!done) { done = true; resolve(); } };
-      utter.onend = finish;
-      utter.onerror = finish;
-      // Safety timeout — don't block forever if speech hangs
-      setTimeout(finish, 3000);
-
-      window.speechSynthesis.speak(utter);
-    } catch (_) {
-      resolve();
-    }
-  });
 }
 
 // Formant frequencies for a male "ah" vowel — bandpass filters at these
@@ -267,7 +216,7 @@ function singMelody(tropName) {
   return new Promise(resolve => setTimeout(resolve, totalDuration * 1000 + 100));
 }
 
-async function play(tropName, hebrewText = null) {
+async function play(tropName) {
   if (!tropName) return;
 
   const ctx = getAudioContext();
@@ -286,15 +235,8 @@ async function play(tropName, hebrewText = null) {
     return;
   }
 
-  // Built-in singing: synthesized male chanting voice sings the trop
-  // melody while speech synthesis pronounces the Hebrew word. If no
-  // Hebrew voice is installed, the sung melody still plays alone.
-  const [speechDone, sungDone] = [
-    speakHebrew(hebrewText),
-    singMelody(tropName),
-  ];
-
-  await Promise.all([speechDone, sungDone]);
+  // Built-in singing: synthesized male chanting voice sings the trop melody
+  await singMelody(tropName);
 }
 
 const TropPlayer = { play, stop, unlock };

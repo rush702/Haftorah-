@@ -31,7 +31,7 @@ function getMultiplier(combo) {
 }
 
 export default function PracticeScreen({ sectionId, onComplete, onExit }) {
-  const { recordWordRead, completeSection } = useGameState();
+  const { recordWordRead, completeSection, awardBonus } = useGameState();
 
   const section = SECTIONS.find((s) => s.id === sectionId) || SECTIONS[0];
   const totalWords = section.words.length;
@@ -46,16 +46,29 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
   const [activeBadges, setActiveBadges] = useState([]);
   const [levelUpModal, setLevelUpModal] = useState(null);
   const [isPlayingTrop, setIsPlayingTrop] = useState(false);
-  const [listenMode, setListenMode] = useState(true);
   const [completing, setCompleting] = useState(false);
   const [comboBurst, setComboBurst] = useState(null);
   const [cantorPlaying, setCantorPlaying] = useState(false);
   const [karaokeIndex, setKaraokeIndex] = useState(0);
+  const [cantorSpeed, setCantorSpeed] = useState(1);
 
   const rewardIdRef = useRef(0);
   const isHandlingRef = useRef(false);
   const cantorRef = useRef(null);
   const karaokeTimingsRef = useRef(null);
+  const karaokeBonusRef = useRef(false);
+
+  // Reward for following the cantor all the way through a section
+  const finishKaraoke = useCallback(() => {
+    setCantorPlaying(false);
+    if (karaokeBonusRef.current) return;
+    karaokeBonusRef.current = true;
+    try {
+      awardBonus(25, 'karaoke');
+      SoundManager.playBadgeUnlock?.();
+    } catch (_) {}
+    addFloatingReward('🎤 +25 Followed the cantor!', window.innerWidth / 2, window.innerHeight / 2, 'bonus');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Real cantor recording: plays continuously while the kid taps along.
   // Sections can share one file via cantorStart/cantorEnd offsets.
@@ -63,12 +76,12 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
     if (!section.cantorAudio) return;
     if (!cantorRef.current) {
       const el = new Audio(`${import.meta.env.BASE_URL}${section.cantorAudio}`);
-      el.addEventListener('ended', () => setCantorPlaying(false));
+      el.addEventListener('ended', finishKaraoke);
       if (section.cantorEnd) {
         el.addEventListener('timeupdate', () => {
           if (el.currentTime >= section.cantorEnd) {
             el.pause();
-            setCantorPlaying(false);
+            finishKaraoke();
           }
         });
       }
@@ -80,6 +93,7 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
       // Restart from the section beginning if outside its window
       if (el.currentTime < start || (section.cantorEnd && el.currentTime >= section.cantorEnd)) {
         el.currentTime = start;
+        karaokeBonusRef.current = false;
       }
       // Karaoke timings: verse windows from data, or the whole file
       const setupTimings = () => {
@@ -90,13 +104,21 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
       };
       if (Number.isFinite(el.duration) || section.cantorVerseTimes) setupTimings();
       else el.addEventListener('loadedmetadata', setupTimings, { once: true });
+      el.playbackRate = cantorSpeed;
       el.play().catch(() => {});
       setCantorPlaying(true);
     } else {
       el.pause();
       setCantorPlaying(false);
     }
-  }, [section.cantorAudio, section.cantorStart, section.cantorEnd, section.cantorVerseTimes, section.words]);
+  }, [section.cantorAudio, section.cantorStart, section.cantorEnd, section.cantorVerseTimes, section.words, cantorSpeed, finishKaraoke]);
+
+  // Speed control: cycle 1x -> 0.8x -> 0.6x (slower = easier to learn)
+  const cycleSpeed = useCallback(() => {
+    const next = cantorSpeed === 1 ? 0.8 : cantorSpeed === 0.8 ? 0.6 : 1;
+    setCantorSpeed(next);
+    if (cantorRef.current) cantorRef.current.playbackRate = next;
+  }, [cantorSpeed]);
 
   // Karaoke: while the cantor sings, the highlighted word follows him
   useEffect(() => {
@@ -302,12 +324,12 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
         triggerHolyFireConfetti(tapX, tapY);
       }
 
-      // Play trop melody if listenMode (skip while the cantor recording
-      // is playing — no clashing audio, the kid taps along instead)
-      if (listenMode && !cantorPlaying && currentWord?.trop && TropPlayer?.play) {
+      // Play the trop melody (skip while the cantor recording is
+      // playing — no clashing audio, the kid taps along instead)
+      if (!cantorPlaying && currentWord?.trop && TropPlayer?.play) {
         setIsPlayingTrop(true);
         try {
-          await TropPlayer.play(currentWord.trop, currentWord.hebrew);
+          await TropPlayer.play(currentWord.trop);
         } catch (_) {}
         setIsPlayingTrop(false);
       }
@@ -331,7 +353,6 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
       currentWord,
       handleSectionComplete,
       isPlayingTrop,
-      listenMode,
       cantorPlaying,
       recordWordRead,
       sessionPoints,
@@ -366,10 +387,10 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
             } catch (_) {}
             onExit();
           }}
-          className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white text-xl font-bold transition-all"
-          aria-label="Exit"
+          className="w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 flex items-center justify-center text-white text-2xl font-bold transition-all"
+          aria-label="Back"
         >
-          ×
+          ←
         </button>
       </div>
 
@@ -411,9 +432,7 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
             ? '🎤 Follow along with the cantor! (tap to pause)'
             : isPlayingTrop
             ? '🎵 Playing melody...'
-            : !currentWord?.trop
-            ? 'Tap to advance'
-            : listenMode
+            : currentWord?.trop
             ? 'Tap word to hear melody'
             : 'Tap to advance'}
         </div>
@@ -431,19 +450,21 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
         </div>
       )}
 
-      {/* Listen mode toggle */}
-      <div className="absolute bottom-4 left-4 z-20">
-        <button
-          onClick={() => setListenMode((m) => !m)}
-          className={`px-4 py-2 rounded-full font-bold text-sm shadow-lg active:scale-95 transition-all flex items-center gap-1.5 ${
-            listenMode
-              ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white'
-              : 'bg-white/10 text-white/70 backdrop-blur-sm'
-          }`}
-        >
-          🎵 {listenMode ? 'Listen On' : 'Listen Off'}
-        </button>
-      </div>
+      {/* Cantor speed control (slower = easier to learn) */}
+      {section.cantorAudio && (
+        <div className="absolute bottom-4 left-4 z-20">
+          <button
+            onClick={cycleSpeed}
+            className={`px-4 py-2 rounded-full font-bold text-sm shadow-lg active:scale-95 transition-all flex items-center gap-1.5 ${
+              cantorSpeed === 1
+                ? 'bg-white/10 text-white/80 backdrop-blur-sm'
+                : 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white'
+            }`}
+          >
+            {cantorSpeed === 1 ? '▶️' : '🐢'} Speed {cantorSpeed}×
+          </button>
+        </div>
+      )}
 
       {/* Real cantor recording: in-app if we have the audio, Chabad link otherwise */}
       <div className="absolute bottom-4 right-4 z-20">

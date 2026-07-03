@@ -155,7 +155,7 @@ export default function ResultsScreen({ stats, onContinue, onNext }) {
 
   return (
     <div
-      className="min-h-[100dvh] flex flex-col items-center justify-between px-6 py-8 overflow-y-auto"
+      className="h-[100dvh] flex flex-col items-center justify-between px-6 py-8 overflow-y-auto"
       style={bgStyle}
     >
       <div className="w-full max-w-md flex flex-col items-center mt-4">
