@@ -164,47 +164,96 @@ function speakHebrew(text) {
   });
 }
 
-function playTones(tropName) {
+// Formant frequencies for a male "ah" vowel — bandpass filters at these
+// resonances make a raw sawtooth sound like a human voice singing "ahh".
+const AH_FORMANTS = [
+  { freq: 660, q: 8, gain: 1.0 },
+  { freq: 1090, q: 10, gain: 0.5 },
+  { freq: 2440, q: 12, gain: 0.25 },
+];
+
+// Sing the trop melody with a synthesized male chanting voice:
+// one continuous sawtooth gliding legato between notes (an octave down,
+// baritone range), with vibrato, shaped through "ah" vowel formants.
+function singMelody(tropName) {
   const melody = TROP_MELODIES[tropName];
   if (!melody) return Promise.resolve();
 
   const ctx = getAudioContext();
   if (!ctx) return Promise.resolve();
 
-  let startTime = ctx.currentTime + 0.05; // tiny buffer
-  let totalDuration = 0;
+  const t0 = ctx.currentTime + 0.05;
+  const totalDuration = melody.reduce((s, [, d]) => s + d, 0);
 
-  for (const [note, duration] of melody) {
-    const freq = NOTES[note];
-    if (!freq) { startTime += duration; totalDuration += duration; continue; }
+  try {
+    // Voice source — continuous, glides between pitches like a real singer
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
 
-    try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle'; // warmer/more vocal than sine
-      osc.frequency.value = freq;
+    // Vibrato: 5.5 Hz, ±4 Hz — the natural wobble of a singing voice
+    const vibrato = ctx.createOscillator();
+    vibrato.frequency.value = 5.5;
+    const vibratoGain = ctx.createGain();
+    vibratoGain.gain.setValueAtTime(0, t0);
+    vibratoGain.gain.linearRampToValueAtTime(4, t0 + 0.25); // vibrato fades in
+    vibrato.connect(vibratoGain);
+    vibratoGain.connect(osc.frequency);
 
-      const attack = 0.03;
-      const release = 0.08;
-      const peak = 0.45; // audible volume
+    // Schedule the melody pitches with legato glides (octave down = baritone)
+    const GLIDE = 0.06;
+    let t = t0;
+    let prevFreq = null;
+    melody.forEach(([note, duration]) => {
+      const freq = (NOTES[note] || NOTES.d) / 2;
+      if (prevFreq === null) {
+        osc.frequency.setValueAtTime(freq, t);
+      } else {
+        osc.frequency.setValueAtTime(prevFreq, t);
+        osc.frequency.exponentialRampToValueAtTime(freq, t + GLIDE);
+      }
+      prevFreq = freq;
+      t += duration;
+    });
 
-      gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(peak, startTime + attack);
-      gain.gain.setValueAtTime(peak, startTime + Math.max(attack, duration - release));
-      gain.gain.linearRampToValueAtTime(0, startTime + duration);
+    // Master envelope — breath-like swell in and release out
+    const master = ctx.createGain();
+    const peak = 0.5;
+    master.gain.setValueAtTime(0, t0);
+    master.gain.linearRampToValueAtTime(peak, t0 + 0.08);
+    master.gain.setValueAtTime(peak, t0 + Math.max(0.08, totalDuration - 0.18));
+    master.gain.linearRampToValueAtTime(0, t0 + totalDuration);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(startTime);
-      osc.stop(startTime + duration + 0.05);
-      activeNodes.push({ osc, gain });
-    } catch (_) {}
+    // Vowel shaping: parallel bandpass formants + a little direct signal
+    const dry = ctx.createGain();
+    dry.gain.value = 0.06;
+    osc.connect(dry);
+    dry.connect(master);
 
-    startTime += duration;
-    totalDuration += duration;
-  }
+    for (const f of AH_FORMANTS) {
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = f.freq;
+      bp.Q.value = f.q;
+      const fg = ctx.createGain();
+      fg.gain.value = f.gain;
+      osc.connect(bp);
+      bp.connect(fg);
+      fg.connect(master);
+      activeNodes.push({ osc: bp, gain: fg });
+    }
 
-  return new Promise(resolve => setTimeout(resolve, totalDuration * 1000 + 60));
+    master.connect(ctx.destination);
+
+    osc.start(t0);
+    osc.stop(t0 + totalDuration + 0.1);
+    vibrato.start(t0);
+    vibrato.stop(t0 + totalDuration + 0.1);
+
+    activeNodes.push({ osc, gain: master });
+    activeNodes.push({ osc: vibrato, gain: vibratoGain });
+  } catch (_) {}
+
+  return new Promise(resolve => setTimeout(resolve, totalDuration * 1000 + 100));
 }
 
 async function play(tropName, hebrewText = null) {
@@ -226,15 +275,15 @@ async function play(tropName, hebrewText = null) {
     return;
   }
 
-  // Fallback: speech (human voice) + melody tones simultaneously.
-  // If no Hebrew voice is available the speech promise resolves quickly
-  // and only the melody tones play.
-  const [speechDone, tonesDone] = [
+  // Built-in singing: synthesized male chanting voice sings the trop
+  // melody while speech synthesis pronounces the Hebrew word. If no
+  // Hebrew voice is installed, the sung melody still plays alone.
+  const [speechDone, sungDone] = [
     speakHebrew(hebrewText),
-    playTones(tropName),
+    singMelody(tropName),
   ];
 
-  await Promise.all([speechDone, tonesDone]);
+  await Promise.all([speechDone, sungDone]);
 }
 
 const TropPlayer = { play, stop, unlock };
