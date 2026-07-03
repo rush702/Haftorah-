@@ -32,7 +32,11 @@ function App() {
         />
       )}
       {screen === 'results' && (
-        <ResultsScreen stats={params.stats} onContinue={() => navigate('home')} />
+        <ResultsScreen
+          stats={params.stats}
+          onContinue={() => navigate('home')}
+          onNext={(sectionId) => navigate('practice', { sectionId })}
+        />
       )}
       {screen === 'achievements' && <AchievementsScreen onBack={() => navigate('home')} />}
     </div>

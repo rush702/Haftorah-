@@ -14,6 +14,13 @@ import SoundManager from '../components/SoundManager';
 
 const COMBO_MILESTONES = [3, 5, 8, 12];
 
+const COMBO_BURSTS = {
+  3: { text: '2× COMBO!', emoji: '✨' },
+  5: { text: '3× ON FIRE!', emoji: '🔥' },
+  8: { text: '5× UNSTOPPABLE!', emoji: '⚡' },
+  12: { text: '10× LEGENDARY!!', emoji: '👑' },
+};
+
 function getMultiplier(combo) {
   if (combo >= 12) return 10;
   if (combo >= 8) return 5;
@@ -40,6 +47,7 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
   const [isPlayingTrop, setIsPlayingTrop] = useState(false);
   const [listenMode, setListenMode] = useState(true);
   const [completing, setCompleting] = useState(false);
+  const [comboBurst, setComboBurst] = useState(null);
 
   const rewardIdRef = useRef(0);
   const isHandlingRef = useRef(false);
@@ -145,6 +153,10 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
           sessionPoints: finalPoints,
           sessionDuration,
           newBadges,
+          isNewRecord: !!result.isNewRecord,
+          prevBest: result.prevBest || 0,
+          speedBonusCount: finalSpeedBonusCount,
+          totalWords,
         });
       }, 1500);
     },
@@ -210,6 +222,11 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
         try {
           SoundManager.playComboMilestone?.();
         } catch (_) {}
+        const burst = COMBO_BURSTS[newCombo];
+        if (burst) {
+          setComboBurst(burst);
+          setTimeout(() => setComboBurst(null), 1100);
+        }
       }
 
       if (wasHolyFire) {
@@ -322,6 +339,18 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
             : 'Tap to advance'}
         </div>
       </div>
+
+      {/* Combo milestone burst */}
+      {comboBurst && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
+          <div className="animate-bounce-in text-center">
+            <div className="text-6xl mb-1">{comboBurst.emoji}</div>
+            <div className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(251,146,60,0.9)] tracking-tight">
+              {comboBurst.text}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Listen mode toggle */}
       <div className="absolute bottom-4 left-4 z-20">

@@ -4,6 +4,9 @@ import { getRankForLevel } from '../data/sections';
 
 const STORAGE_KEY = 'haftorah_save';
 
+export const DAILY_QUEST_TARGET = 40; // words per day
+export const DAILY_QUEST_REWARD = 250;
+
 const DEFAULT_STATE = {
   playerName: null,
   totalPoints: 0,
@@ -18,6 +21,13 @@ const DEFAULT_STATE = {
   practicedAtNight: false,
   practicedEarlyMorning: false,
   holyFireCount: 0,
+  wordsReadToday: 0,
+  wordsReadDate: null,
+  questClaimedDate: null,
+  questsCompleted: 0,
+  bestSectionPoints: {},
+  recordsBroken: 0,
+  chestsOpened: 0,
 };
 
 function loadState() {
@@ -115,16 +125,56 @@ export function useGameState() {
     const isNight = hour >= 22;
     const isEarlyMorning = hour < 7;
 
+    const today = getTodayString();
+
     setState((prev) => ({
       ...prev,
       totalPoints: prev.totalPoints + (basePoints || 0),
       totalWordsRead: prev.totalWordsRead + 1,
+      wordsReadToday: (prev.wordsReadDate === today ? prev.wordsReadToday : 0) + 1,
+      wordsReadDate: today,
       maxCombo: Math.max(prev.maxCombo, currentCombo || 0),
       maxConsecutiveSpeedBonuses: Math.max(prev.maxConsecutiveSpeedBonuses, consecutiveSpeed),
       practicedAtNight: prev.practicedAtNight || isNight,
       practicedEarlyMorning: prev.practicedEarlyMorning || isEarlyMorning,
       holyFireCount: prev.holyFireCount + (wasHolyFire ? 1 : 0),
     }));
+  }, []);
+
+  // Award bonus points from variable-reward events (treasure chests,
+  // daily quest). Evaluates badges so chest/quest badges pop immediately.
+  const awardBonus = useCallback((points, source) => {
+    let result = { newBadges: [], leveledUp: false, newLevel: 1 };
+    const today = getTodayString();
+
+    setState((prev) => {
+      const prevLevel = Math.floor(prev.totalPoints / 1000) + 1;
+      const totalPoints = prev.totalPoints + (points || 0);
+      const newLevel = Math.floor(totalPoints / 1000) + 1;
+
+      const postState = {
+        ...prev,
+        totalPoints,
+        chestsOpened: prev.chestsOpened + (source === 'chest' ? 1 : 0),
+        questsCompleted: prev.questsCompleted + (source === 'quest' ? 1 : 0),
+        questClaimedDate: source === 'quest' ? today : prev.questClaimedDate,
+      };
+
+      const stats = { ...postState, level: newLevel, xp: totalPoints };
+      const earned = new Set(prev.earnedBadges || []);
+      const newlyEarned = [];
+      for (const badge of BADGES) {
+        if (!badge?.id || earned.has(badge.id)) continue;
+        let passed = false;
+        try { passed = !!badge.check?.(stats); } catch (_) {}
+        if (passed) { newlyEarned.push(badge); earned.add(badge.id); }
+      }
+
+      result = { newBadges: newlyEarned, leveledUp: newLevel > prevLevel, newLevel };
+      return { ...postState, earnedBadges: Array.from(earned) };
+    });
+
+    return result;
   }, []);
 
   const updateStreakInline = useCallback((prev) => {
@@ -156,6 +206,13 @@ export function useGameState() {
 
       const streakInfo = updateStreakInline(prev);
 
+      // Personal record tracking — beating your own score is the hook
+      const prevBest = prev.bestSectionPoints?.[sectionId] || 0;
+      const isNewRecord = sessionPoints > prevBest;
+      const bestSectionPoints = isNewRecord
+        ? { ...prev.bestSectionPoints, [sectionId]: sessionPoints }
+        : prev.bestSectionPoints;
+
       const postState = {
         ...prev,
         sectionStars,
@@ -163,6 +220,8 @@ export function useGameState() {
         totalPoints,
         dailyStreak: streakInfo.dailyStreak,
         lastPracticeDate: streakInfo.lastPracticeDate,
+        bestSectionPoints,
+        recordsBroken: prev.recordsBroken + (isNewRecord && prevBest > 0 ? 1 : 0),
       };
 
       const newLevel = Math.floor(totalPoints / 1000) + 1;
@@ -199,6 +258,8 @@ export function useGameState() {
         newBadges: newlyEarned,
         leveledUp,
         newLevel,
+        isNewRecord,
+        prevBest,
       };
 
       return {
@@ -224,6 +285,15 @@ export function useGameState() {
   const xp = state.totalPoints;
   const rankTitle = safeGetRankForLevel(level);
 
+  const today = getTodayString();
+  const dailyQuest = {
+    target: DAILY_QUEST_TARGET,
+    reward: DAILY_QUEST_REWARD,
+    progress: state.wordsReadDate === today ? state.wordsReadToday : 0,
+    complete: state.wordsReadDate === today && state.wordsReadToday >= DAILY_QUEST_TARGET,
+    claimed: state.questClaimedDate === today,
+  };
+
   return {
     playerName: state.playerName,
     totalPoints: state.totalPoints,
@@ -241,9 +311,14 @@ export function useGameState() {
     practicedAtNight: state.practicedAtNight,
     practicedEarlyMorning: state.practicedEarlyMorning,
     holyFireCount: state.holyFireCount,
+    bestSectionPoints: state.bestSectionPoints,
+    chestsOpened: state.chestsOpened,
+    questsCompleted: state.questsCompleted,
+    dailyQuest,
     setPlayerName,
     recordWordRead,
     completeSection,
+    awardBonus,
     resetProgress,
   };
 }

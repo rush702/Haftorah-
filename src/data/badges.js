@@ -123,6 +123,30 @@ export const BADGES = [
     rarity: 'rare',
     check: (stats) => stats.holyFireCount >= 1,
   },
+  {
+    id: 'chest_hunter',
+    name: 'Treasure Hunter',
+    description: 'Opened 5 treasure chests',
+    emoji: '🎁',
+    rarity: 'rare',
+    check: (stats) => stats.chestsOpened >= 5,
+  },
+  {
+    id: 'quest_champ',
+    name: 'Quest Champion',
+    description: 'Completed 3 daily quests',
+    emoji: '🗺️',
+    rarity: 'epic',
+    check: (stats) => stats.questsCompleted >= 3,
+  },
+  {
+    id: 'record_breaker',
+    name: 'Record Breaker',
+    description: 'Beat your own high score on a section',
+    emoji: '📈',
+    rarity: 'rare',
+    check: (stats) => stats.recordsBroken >= 1,
+  },
 ];
 
 export const RARITY_COLORS = {
