@@ -11,6 +11,7 @@ import BadgeToast from '../components/BadgeToast';
 import LevelUpModal from '../components/LevelUpModal';
 import TropPlayer from '../components/TropPlayer';
 import SoundManager from '../components/SoundManager';
+import { buildWordTimings, wordIndexAtTime } from '../utils/karaoke';
 
 const COMBO_MILESTONES = [3, 5, 8, 12];
 
@@ -49,10 +50,12 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
   const [completing, setCompleting] = useState(false);
   const [comboBurst, setComboBurst] = useState(null);
   const [cantorPlaying, setCantorPlaying] = useState(false);
+  const [karaokeIndex, setKaraokeIndex] = useState(0);
 
   const rewardIdRef = useRef(0);
   const isHandlingRef = useRef(false);
   const cantorRef = useRef(null);
+  const karaokeTimingsRef = useRef(null);
 
   // Real cantor recording: plays continuously while the kid taps along.
   // Sections can share one file via cantorStart/cantorEnd offsets.
@@ -78,13 +81,38 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
       if (el.currentTime < start || (section.cantorEnd && el.currentTime >= section.cantorEnd)) {
         el.currentTime = start;
       }
+      // Karaoke timings: verse windows from data, or the whole file
+      const setupTimings = () => {
+        const windows =
+          section.cantorVerseTimes ||
+          [[section.cantorStart || 0, section.cantorEnd || el.duration || 60]];
+        karaokeTimingsRef.current = buildWordTimings(section.words, windows);
+      };
+      if (Number.isFinite(el.duration) || section.cantorVerseTimes) setupTimings();
+      else el.addEventListener('loadedmetadata', setupTimings, { once: true });
       el.play().catch(() => {});
       setCantorPlaying(true);
     } else {
       el.pause();
       setCantorPlaying(false);
     }
-  }, [section.cantorAudio, section.cantorStart, section.cantorEnd]);
+  }, [section.cantorAudio, section.cantorStart, section.cantorEnd, section.cantorVerseTimes, section.words]);
+
+  // Karaoke: while the cantor sings, the highlighted word follows him
+  useEffect(() => {
+    if (!cantorPlaying) return undefined;
+    let raf;
+    const tick = () => {
+      const el = cantorRef.current;
+      const timings = karaokeTimingsRef.current;
+      if (el && timings) {
+        setKaraokeIndex(wordIndexAtTime(timings, el.currentTime));
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [cantorPlaying]);
 
   // Stop cantor audio when leaving the screen
   useEffect(() => {
@@ -348,23 +376,29 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
       {/* Progress bar */}
       <div className="px-4 pb-3 z-10">
         <ProgressBar
-          current={Math.min(wordIndex, totalWords)}
+          current={Math.min(cantorPlaying ? karaokeIndex + 1 : wordIndex, totalWords)}
           total={totalWords}
-          color={section.color || '#a855f7'}
+          color={cantorPlaying ? 'green' : section.color || '#a855f7'}
         />
         <div className="text-[11px] text-indigo-200/60 mt-1 text-center font-bold tracking-wider uppercase">
-          {section.title} — {Math.min(wordIndex + 1, totalWords)}/{totalWords}
+          {cantorPlaying
+            ? `🎤 Karaoke — ${Math.min(karaokeIndex + 1, totalWords)}/${totalWords}`
+            : `${section.title} — ${Math.min(wordIndex + 1, totalWords)}/${totalWords}`}
         </div>
       </div>
 
-      {/* Word card center */}
+      {/* Word card center — follows the cantor in karaoke mode */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-4">
-        {currentWord && wordIndex < totalWords && (
+        {(cantorPlaying ? section.words[karaokeIndex] : currentWord && wordIndex < totalWords ? currentWord : null) && (
           <WordCard
-            hebrew={currentWord.hebrew}
-            transliteration={currentWord.transliteration}
-            isPlaying={isPlayingTrop}
+            hebrew={(cantorPlaying ? section.words[karaokeIndex] : currentWord).hebrew}
+            transliteration={(cantorPlaying ? section.words[karaokeIndex] : currentWord).transliteration}
+            isPlaying={isPlayingTrop || cantorPlaying}
             onTap={(e) => {
+              if (cantorPlaying) {
+                toggleCantor(); // tap pauses karaoke, back to tap-practice
+                return;
+              }
               TropPlayer.unlock();
               handleWordTap(e);
             }}
@@ -373,7 +407,9 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
         )}
 
         <div className="mt-6 text-sm text-indigo-200/70 font-semibold">
-          {isPlayingTrop
+          {cantorPlaying
+            ? '🎤 Follow along with the cantor! (tap to pause)'
+            : isPlayingTrop
             ? '🎵 Playing melody...'
             : !currentWord?.trop
             ? 'Tap to advance'

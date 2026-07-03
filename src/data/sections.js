@@ -56,6 +56,8 @@ export const SECTIONS = [
     cantorAudio: 'audio/cantor/haftarah.mp3',
     cantorStart: 0.4,
     cantorEnd: 63.8,
+    // [start, end] of each verse in the recording (from silence detection)
+    cantorVerseTimes: [[0.7, 28.1], [29.2, 63.3]],
   },
   {
     id: 2,
@@ -72,6 +74,7 @@ export const SECTIONS = [
     cantorAudio: 'audio/cantor/haftarah.mp3',
     cantorStart: 64.0,
     cantorEnd: 86.8,
+    cantorVerseTimes: [[64.2, 86.3]],
   },
   {
     id: 3,
@@ -88,6 +91,11 @@ export const SECTIONS = [
     cantorAudio: 'audio/cantor/haftarah.mp3',
     cantorStart: 87.2,
     cantorEnd: 339.4,
+    cantorVerseTimes: [
+      [87.3, 102.2], [103.3, 140.0], [141.0, 162.5], [163.7, 187.5],
+      [188.4, 207.9], [208.8, 229.6], [230.6, 260.2], [261.1, 296.7],
+      [298.0, 310.1], [311.0, 338.6],
+    ],
   },
   {
     id: 4,
