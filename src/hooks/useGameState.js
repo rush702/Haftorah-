@@ -1,14 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { BADGES } from '../data/badges';
-
-let getRankForLevel;
-try {
-  // eslint-disable-next-line global-require
-  const sectionsModule = require('../data/sections');
-  getRankForLevel = sectionsModule.getRankForLevel;
-} catch (e) {
-  getRankForLevel = null;
-}
+import { getRankForLevel } from '../data/sections';
 
 const STORAGE_KEY = 'haftorah_save';
 
@@ -97,7 +89,11 @@ export function useGameState() {
   }, [state]);
 
   const setPlayerName = useCallback((name) => {
-    setState((prev) => ({ ...prev, playerName: name }));
+    // Save synchronously: the welcome screen unmounts immediately after
+    // calling this, so a save deferred to the effect would be lost.
+    const next = { ...loadState(), playerName: name };
+    saveState(next);
+    setState(next);
   }, []);
 
   const recordWordRead = useCallback(({
