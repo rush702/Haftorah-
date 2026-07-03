@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Chabad.org cantor recordings — personal use only, do not redistribute
+public/audio/trop/

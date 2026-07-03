@@ -34,6 +34,49 @@ let audioCtx = null;
 let activeNodes = [];
 let voicesLoaded = false;
 
+// Real cantor recordings (downloaded via scripts/fetch-chabad-audio.mjs
+// into public/audio/trop/). manifest.json maps trop key → filename.
+let recordingsManifest = null;
+let manifestPromise = null;
+let currentAudioEl = null;
+const audioElCache = {};
+
+function loadManifest() {
+  if (manifestPromise) return manifestPromise;
+  manifestPromise = fetch('/audio/trop/manifest.json')
+    .then((r) => (r.ok ? r.json() : null))
+    .then((m) => { recordingsManifest = m; return m; })
+    .catch(() => { recordingsManifest = null; return null; });
+  return manifestPromise;
+}
+
+function playRecording(tropName) {
+  const file = recordingsManifest?.[tropName];
+  if (!file) return null;
+  return new Promise((resolve) => {
+    try {
+      let el = audioElCache[tropName];
+      if (!el) {
+        el = new Audio(`/audio/trop/${file}`);
+        el.preload = 'auto';
+        audioElCache[tropName] = el;
+      }
+      currentAudioEl = el;
+      el.currentTime = 0;
+      const finish = () => {
+        el.removeEventListener('ended', finish);
+        el.removeEventListener('error', finish);
+        resolve(true);
+      };
+      el.addEventListener('ended', finish);
+      el.addEventListener('error', finish);
+      el.play().catch(() => finish());
+    } catch (_) {
+      resolve(false);
+    }
+  });
+}
+
 function getAudioContext() {
   if (audioCtx) return audioCtx;
   try {
@@ -57,6 +100,8 @@ function unlock() {
     window.speechSynthesis.getVoices();
     voicesLoaded = true;
   }
+  // Kick off manifest load early
+  loadManifest();
 }
 
 function stop() {
@@ -71,6 +116,11 @@ function stop() {
   try {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   } catch (_) {}
+  // Stop any cantor recording
+  if (currentAudioEl) {
+    try { currentAudioEl.pause(); } catch (_) {}
+    currentAudioEl = null;
+  }
 }
 
 function getBestHebrewVoice() {
@@ -167,7 +217,16 @@ async function play(tropName, hebrewText = null) {
 
   stop();
 
-  // Play speech (human voice) and melody tones simultaneously.
+  // Prefer the real cantor recording when it's been downloaded
+  // (public/audio/trop/ via scripts/fetch-chabad-audio.mjs).
+  await loadManifest();
+  const recording = playRecording(tropName);
+  if (recording) {
+    await recording;
+    return;
+  }
+
+  // Fallback: speech (human voice) + melody tones simultaneously.
   // If no Hebrew voice is available the speech promise resolves quickly
   // and only the melody tones play.
   const [speechDone, tonesDone] = [
