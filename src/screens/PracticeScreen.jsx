@@ -113,12 +113,13 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
     }
   }, [section.cantorAudio, section.cantorStart, section.cantorEnd, section.cantorVerseTimes, section.words, cantorSpeed, finishKaraoke]);
 
-  // Speed control: cycle 1x -> 0.8x -> 0.6x (slower = easier to learn)
+  // Speed control: slow it down to learn, speed it up to challenge
+  const SPEEDS = [1, 1.25, 1.5, 2, 0.6, 0.8];
   const cycleSpeed = useCallback(() => {
-    const next = cantorSpeed === 1 ? 0.8 : cantorSpeed === 0.8 ? 0.6 : 1;
+    const next = SPEEDS[(SPEEDS.indexOf(cantorSpeed) + 1) % SPEEDS.length];
     setCantorSpeed(next);
     if (cantorRef.current) cantorRef.current.playbackRate = next;
-  }, [cantorSpeed]);
+  }, [cantorSpeed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Karaoke: while the cantor sings, the highlighted word follows him
   useEffect(() => {
@@ -458,10 +459,12 @@ export default function PracticeScreen({ sectionId, onComplete, onExit }) {
             className={`px-4 py-2 rounded-full font-bold text-sm shadow-lg active:scale-95 transition-all flex items-center gap-1.5 ${
               cantorSpeed === 1
                 ? 'bg-white/10 text-white/80 backdrop-blur-sm'
+                : cantorSpeed > 1
+                ? 'bg-gradient-to-br from-orange-500 to-red-600 text-white'
                 : 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white'
             }`}
           >
-            {cantorSpeed === 1 ? '▶️' : '🐢'} Speed {cantorSpeed}×
+            {cantorSpeed === 1 ? '▶️' : cantorSpeed > 1 ? '🚀' : '🐢'} Speed {cantorSpeed}×
           </button>
         </div>
       )}
