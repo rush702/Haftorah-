@@ -118,6 +118,8 @@ export const SECTIONS = [
     parTime: 480,
     description: 'The four blessings you say after reading the haftorah.',
     words: withTefillahTrop(SEC6_WORDS),
+    // Real cantor recording (Chaim Alevsky, Chabad.org) — Ashkenaz nusach
+    cantorAudio: 'audio/cantor/section-6.mp3',
   },
 ];
 
